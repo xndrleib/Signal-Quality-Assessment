@@ -15,7 +15,7 @@ from src.data_preprocessing import (
 from src.vis import (
     plot_spectrum_with_uncertainty
 )
-from src.quality_assessment import spectral_entropy
+from src.quality_assessment import spectral_entropy, dominant_frequency_metric
 
 import matplotlib.pyplot as plt
 
@@ -45,8 +45,12 @@ def process_single_file(file_path, res_dir, window_length=10000, step=20,
     spectrum_std = np.std(fft_segments, axis=0)
 
     # Compute metrics
-    avg_std = np.mean(spectrum_std)
-    spec_entropy = spectral_entropy(spectrum_mean, eps=1e-12)
+    avg_std = float(np.mean(spectrum_std))
+    spec_entropy = float(spectral_entropy(spectrum_mean, eps=1e-12))
+
+    target_freq = 50.0
+    freq_tolerance = 1.0
+    dom_freq_ratio = float(dominant_frequency_metric(spectrum_mean, freqs, target_freq=target_freq, freq_tolerance=freq_tolerance))
 
     # Plot and save
     fig, ax = plot_spectrum_with_uncertainty(spectrum_mean=spectrum_mean, 
@@ -67,8 +71,9 @@ def process_single_file(file_path, res_dir, window_length=10000, step=20,
     # Prepare results dictionary
     results = {
         'Path': file_path,
-        'Average Standard Deviation': float(avg_std),
-        'Spectral Entropy': float(spec_entropy),
+        'Average Standard Deviation': avg_std,
+        'Spectral Entropy': spec_entropy,
+        f'Dominant Freq Ratio ({target_freq})': dom_freq_ratio,
         'Timestamp': timestamp_str
     }
 
@@ -76,8 +81,8 @@ def process_single_file(file_path, res_dir, window_length=10000, step=20,
     yml_filename = f"metrics_{filename_without_ext}_{timestamp_str}.yml"
     yml_path = os.path.join(res_dir, yml_filename)
 
-    with open(yml_path, 'w') as yaml_file:
-        yaml.dump(results, yaml_file, default_flow_style=False)
+    with open(yml_path, 'w', encoding='utf-8') as yaml_file:
+        yaml.dump(results, yaml_file, default_flow_style=False, allow_unicode=True)
 
     print(f"Processed: {file_path}")
     print(f"Saved results to: {yml_path}")

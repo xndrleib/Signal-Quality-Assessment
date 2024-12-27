@@ -123,7 +123,7 @@ def plot_spectrum(df, freq_col="Frequency (Hz)", amp_col="Amplitude",
     return fig, ax
 
 
-def plot_spectrum_with_uncertainty(spectrum_mean, spectrum_std, x_values=None, n_std=2, title="Spectrum with Uncertainty",
+def plot_spectrum_with_uncertainty(spectrum_mean, spectrum_std, x_values=None, n_std=3, title="Spectrum with Uncertainty",
                                          axis_labels=None):
     """
     Plots the average spectrum with uncertainty boundaries.
