@@ -20,6 +20,7 @@ This repository contains Python scripts to assess the quality of time-series sig
 .
 ├── .gitignore
 ├── data/
+│   ├── 0702 без перекосов фаза A.txt
 │   └── data-sample_motor-operating-at-100%-load.txt
 ├── environment.yml
 ├── pyproject.toml
