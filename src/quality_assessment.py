@@ -1,15 +1,4 @@
-from src.utils import read_data
 import numpy as np
-from src.data_preprocessing import (
-    segment_signal,
-    normalize_segment,
-    fft_segment
-)
-from src.vis import (
-    plot_segment_with_uncertainty
-)
-import matplotlib.pyplot as plt
-import yaml
 
 def weighted_average_metric(metrics, weights):
     """
@@ -59,44 +48,3 @@ def spectral_entropy(fft_magnitude, eps=1e-12):
     spectral_ent = -np.sum(p * np.log(p + eps))
     
     return spectral_ent
-
-
-if __name__ == '__main__':
-    datapath = 'data/data-sample_motor-operating-at-100%-load.txt'
-    df = read_data(datapath)
-
-    noisy_signal = df['Data'].to_numpy()
-    noisy_signal_mean = np.mean(noisy_signal)
-    noisy_signal -= noisy_signal_mean
-
-    segments = segment_signal(noisy_signal, segment_length=10000, step=20)
-    fft_segments, freqs = fft_segment(segments, f_sampling=10000, db=True, cutoff_freq=250)
-
-    for i in range(fft_segments.shape[0]):
-        fft_segments[i, :] = normalize_segment(fft_segments[i, :], method='z-score')[0]
-
-    spectrum_mean = np.mean(fft_segments, axis=0)
-    spectrum_std = np.std(fft_segments, axis=0)
-
-    fig, ax = plot_segment_with_uncertainty(spectrum_mean=spectrum_mean, spectrum_std=spectrum_std, 
-                                  x_values=freqs,
-                                  n_std=3)
-    
-
-    save_path = 'res/segment_with_uncertainty.png'
-    fig.savefig(save_path, dpi=300, bbox_inches='tight')
-    print(f"Plot saved to {save_path}")
-
-    avg_std = np.mean(spectrum_std)
-    spectral_entropy = spectral_entropy(spectrum_mean, eps=1e-12)
-
-    results = {
-        'Path': datapath,
-        'Average Standard Deviation': avg_std.tolist(),
-        'Spectral Entropy': spectral_entropy.tolist()
-    }
-
-    with open('res/result.yml', 'w') as yaml_file:
-        yaml.dump(results, yaml_file, default_flow_style=False)
-
-        
