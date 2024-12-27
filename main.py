@@ -180,6 +180,11 @@ def main():
     input_path = Path(args.input)
     res_dir = Path(args.res_dir)
 
+    # Log input parameters
+    logger.info("CLI Input Parameters:")
+    for arg, value in vars(args).items():
+        logger.info(f"  {arg}: {value}")
+
     # Check if input is a file or a directory
     if input_path.is_file():
         # Single file
