@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "signal-quality-assessment"
+version = "0.1.0"
+description = "A pipeline for signal quality assessment"
+readme = "README.md"
+authors = [
+    { name = "Aleksandr Khizhik", email = "akhizhik@hse.ru" }
+]
+
+[tool.setuptools]
+packages = ["src"]
