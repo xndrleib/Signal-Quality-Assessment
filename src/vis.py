@@ -1,75 +1,96 @@
-import matplotlib.pyplot as plt
+import logging
 import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from typing import Optional, List, Tuple
 
+logger = logging.getLogger(__name__)
 
-def plot_random_segments(segments, num_segments=10, labels=None, axis_labels=None, x_values=None):
+def plot_random_segments(
+    segments: np.ndarray,
+    num_segments: int = 10,
+    labels: Optional[List[str]] = None,
+    axis_labels: Optional[Tuple[str, str]] = None,
+    x_values: Optional[np.ndarray] = None
+) -> Tuple[plt.Figure, plt.Axes]:
     """
     Plots random segments from the provided segments.
 
-    Parameters:
-    - segments: Array of segments to plot.
-    - num_segments: Number of random segments to plot.
-    - labels: Optional list of custom labels for the segments.
-    - axis_labels: Optional tuple (x_label, y_label) for x and y axis labels.
-    - x_values: Optional array of x-values corresponding to the peak segments.
+    :param segments: 2D array of shape (N_segments, segment_length).
+    :param num_segments: How many random segments to plot.
+    :param labels: Optional list of custom labels for segments.
+    :param axis_labels: (x_label, y_label) for the axes.
+    :param x_values: x-values for the plot. If 2D, it matches each segment; if 1D, truncated to segment length.
+    :return: (fig, ax)
     """
     if len(segments) < num_segments:
-        raise ValueError("Not enough segments to plot")
+        raise ValueError(f"Requested {num_segments} segments but only have {len(segments)}.")
 
     random_indices = np.random.choice(len(segments), num_segments, replace=False)
     selected_segments = segments[random_indices]
 
     if labels is not None:
         if len(labels) != len(segments):
-            raise ValueError("Length of labels must match the length of peak_segments")
+            raise ValueError("Length of labels must match the length of segments.")
         selected_labels = [labels[i] for i in random_indices]
     else:
         selected_labels = [f"Segment {i}" for i in random_indices]
 
-    # Setup subplot grid
-    fig, axes = plt.subplots(num_segments // 2, 2, figsize=(15, 5 * (num_segments // 2)))
+    rows = (num_segments + 1) // 2
+    fig, axes = plt.subplots(rows, 2, figsize=(15, 5 * rows))
     axes = axes.flatten()
 
-    x_label, y_label = axis_labels if axis_labels else ('Frequency (Hz)', 'Power (dB)')
+    if axis_labels is not None:
+        x_label, y_label = axis_labels
+    else:
+        x_label, y_label = ('Frequency (Hz)', 'Power (dB)')
 
     for i, ax in enumerate(axes):
+        if i >= num_segments:
+            ax.set_visible(False)
+            continue
+
         segment = selected_segments[i]
-
         if x_values is not None:
-            if len(x_values.shape) == 1:
-                x_segment = x_values[:len(segment)]
+            if x_values.ndim == 1:
+                x_vals = x_values[:len(segment)]
             else:
-                x_segment = x_values[random_indices[i]]
+                x_vals = x_values[random_indices[i]]
         else:
-            x_segment = np.linspace(0, len(segment), len(segment))
+            x_vals = np.linspace(0, len(segment), len(segment))
 
-        ax.plot(x_segment, segment, linewidth=1.5, color='blue')
+        ax.plot(x_vals, segment, linewidth=1.5, color='blue')
         ax.set_title(selected_labels[i], fontsize=10, fontweight='bold')
         ax.set_xlabel(x_label, fontsize=9)
         ax.set_ylabel(y_label, fontsize=9)
         ax.grid(True, linestyle='--', linewidth=0.5)
 
     plt.tight_layout()
-    return fig, ax
+    return fig, axes
 
 
-def plot_spectrum(df, freq_col="Frequency (Hz)", amp_col="Amplitude",
-                  title="Frequency Spectrum", xlabel="Frequency (Hz)",
-                  ylabel="Amplitude (dB)", highlight_freqs=None, method="interpolate"):
+def plot_spectrum(
+    df: pd.DataFrame,
+    freq_col: str = "Frequency (Hz)",
+    amp_col: str = "Amplitude",
+    title: str = "Frequency Spectrum",
+    xlabel: str = "Frequency (Hz)",
+    ylabel: str = "Amplitude (dB)",
+    highlight_freqs: Optional[List[float]] = None,
+    method: str = "interpolate"
+) -> Tuple[plt.Figure, plt.Axes]:
     """
     Plots the frequency spectrum with optional highlighted points using interpolation or closest point methods.
 
-    Parameters:
-    - df: Pandas DataFrame containing frequency and amplitude data.
-    - freq_col: Column name for frequency data (default: "Frequency (Hz)").
-    - amp_col: Column name for amplitude data (default: "Amplitude").
-    - title: Title of the plot (default: "Frequency Spectrum").
-    - xlabel: Label for the x-axis (default: "Frequency (Hz)").
-    - ylabel: Label for the y-axis (default: "Amplitude (dB)").
-    - highlight_freqs: List of frequency values to highlight as points.
-    - method: Method to handle frequencies not in DataFrame. Options: "interpolate" or "closest".
-              "interpolate" uses linear interpolation between known points.
-              "closest" finds the closest existing frequency in df.
+    :param df: DataFrame containing frequency and amplitude columns.
+    :param freq_col: Name of the frequency column.
+    :param amp_col: Name of the amplitude column.
+    :param title: Plot title.
+    :param xlabel: X-axis label.
+    :param ylabel: Y-axis label.
+    :param highlight_freqs: Frequencies to highlight.
+    :param method: 'interpolate' or 'closest' method for highlight points.
+    :return: (fig, ax)
     """
     fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -92,7 +113,7 @@ def plot_spectrum(df, freq_col="Frequency (Hz)", amp_col="Amplitude",
                 # No exact match, handle according to method
                 if method == "interpolate":
                     # Use np.interp to interpolate
-                    hf_amp = np.interp(hf, freqs, amps)
+                    hf_amp = float(np.interp(hf, freqs, amps))
                 elif method == "closest":
                     # Find closest frequency
                     idx_closest = np.argmin(np.abs(freqs - hf))
@@ -101,45 +122,47 @@ def plot_spectrum(df, freq_col="Frequency (Hz)", amp_col="Amplitude",
                     raise ValueError("Invalid method. Use 'interpolate' or 'closest'.")
 
             highlight_amps.append(hf_amp)
-
+        
         # Plot the highlight points
-        ax.scatter(highlight_freqs, highlight_amps, color='red', s=50, marker='o', 
-                   label='Highlighted Points')
+        ax.scatter(highlight_freqs, highlight_amps, color='red', s=50, marker='o', label='Highlighted Points')
 
     # Set titles and labels
     ax.set_title(title)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
-
     # Add grid lines
     ax.grid(True, which='both', linestyle='--', linewidth=0.5)
-
-    # Reference line at 0 dB (optional)
+    # Reference line at 0 dB
     ax.axhline(y=0, color='black', linewidth=0.8, linestyle='--')
-
     # Add a legend
     ax.legend(loc='best')
-
     return fig, ax
 
 
-def plot_spectrum_with_uncertainty(spectrum_mean, spectrum_std, x_values=None, n_std=3, title="Spectrum with Uncertainty",
-                                         axis_labels=None):
+def plot_spectrum_with_uncertainty(
+    spectrum_mean: np.ndarray,
+    spectrum_std: np.ndarray,
+    x_values: Optional[np.ndarray] = None,
+    n_std: int = 3,
+    title: str = "Spectrum with Uncertainty",
+    axis_labels: Optional[Tuple[str, str]] = None
+) -> Tuple[plt.Figure, plt.Axes]:
     """
     Plots the average spectrum with uncertainty boundaries.
 
-    Parameters:
-    - x_values: Optional x-axis values corresponding to the spectrum.
-    - n_std: Number of standard deviations for the uncertainty boundary.
-    - title: Title for the spectrum.
-    - axis_labels: Optional tuple (x_label, y_label) for axis labels.
+    :param spectrum_mean: Mean amplitude array.
+    :param spectrum_std: Standard deviation array.
+    :param x_values: X-axis values. If None, use array index.
+    :param n_std: # of standard deviations for the shaded region.
+    :param title: Plot title.
+    :param axis_labels: (x_label, y_label) for axes.
+    :return: (fig, ax)
     """
-
     if x_values is None:
-        x_values = np.linspace(0, len(spectrum_mean), len(spectrum_mean))
+        x_values = np.arange(len(spectrum_mean))
 
-    # Plot
     x_label, y_label = axis_labels if axis_labels else ('Frequency (Hz)', 'Power (dB)')
+
     fig, ax = plt.subplots(figsize=(10, 5))
     ax.plot(x_values, spectrum_mean, linewidth=2.0, color='blue', label='Mean Spectrum')
     ax.fill_between(
@@ -153,7 +176,7 @@ def plot_spectrum_with_uncertainty(spectrum_mean, spectrum_std, x_values=None, n
     # Add thicker boundary lines for the shaded region
     ax.plot(x_values, spectrum_mean - spectrum_std * n_std, linewidth=1.0, color='darkblue', linestyle='--')
     ax.plot(x_values, spectrum_mean + spectrum_std * n_std, linewidth=1.0, color='darkblue', linestyle='--')
-    
+
     ax.set_title(title, fontsize=10, fontweight='bold')
     ax.set_xlabel(x_label, fontsize=9)
     ax.set_ylabel(y_label, fontsize=9)
