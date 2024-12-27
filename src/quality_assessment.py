@@ -96,7 +96,7 @@ if __name__ == '__main__':
         'Spectral Entropy': spectral_entropy.tolist()
     }
 
-    # with open('res/result.yml', 'w') as yaml_file:
-    #     yaml.dump(results, yaml_file, default_flow_style=False)
+    with open('res/result.yml', 'w') as yaml_file:
+        yaml.dump(results, yaml_file, default_flow_style=False)
 
         
