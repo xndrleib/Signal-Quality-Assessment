@@ -4,10 +4,9 @@ This repository contains Python scripts to assess the quality of time-series sig
 1. **Reading** raw data from text files.
 2. **Segmenting** signals into windows.
 3. **Transforming** them to the frequency domain (FFT).
-4. **Normalizing** the FFT results.
-5. **Computing** quality metrics (Spectral Entropy, etc.).
-6. **Visualizing** the mean spectrum with uncertainty (standard deviation).
-7. **Saving** metrics into timestamped `.yml` files.
+4. **Computing** quality metrics (Spectral Entropy, etc.).
+5. **Visualizing** the mean spectrum with uncertainty (standard deviation).
+6. **Saving** metrics into timestamped `.yml` files.
 
 ## Table of Contents
 - [Directory Structure](#directory-structure)
@@ -55,6 +54,7 @@ cd Signal-Quality-Assessment
 ### 2. Set Up the Conda Environment
 ```bash
 bash setup.sh
+conda activate py311_sqa
 ```
 
 ### 3. Install the Project in Editable Mode

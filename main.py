@@ -40,10 +40,6 @@ def process_single_file(file_path, res_dir, window_length=10000, step=20,
     # Perform FFT on each segment
     fft_segments, freqs = fft_segment(segments, f_sampling=f_sampling, db=db, cutoff_freq=cutoff_freq)
 
-    # Normalize each segment in the frequency domain
-    for i in range(fft_segments.shape[0]):
-        fft_segments[i, :] = normalize_segment(fft_segments[i, :], method='z-score')[0]
-
     # Compute mean and standard deviation across segments
     spectrum_mean = np.mean(fft_segments, axis=0)
     spectrum_std = np.std(fft_segments, axis=0)
@@ -77,7 +73,7 @@ def process_single_file(file_path, res_dir, window_length=10000, step=20,
     }
 
     # Save results to a YAML file with timestamp
-    yml_filename = f"result_{filename_without_ext}_{timestamp_str}.yml"
+    yml_filename = f"metrics_{filename_without_ext}_{timestamp_str}.yml"
     yml_path = os.path.join(res_dir, yml_filename)
 
     with open(yml_path, 'w') as yaml_file:
@@ -152,7 +148,7 @@ def main():
     elif os.path.isdir(args.input):
         # Process multiple files in the folder
         for filename in os.listdir(args.input):
-            if filename.lower().endswith(".txt") or filename.lower().endswith(".csv"):
+            if filename.lower().endswith(".txt"):
                 full_path = os.path.join(args.input, filename)
                 process_single_file(
                     file_path=full_path,
