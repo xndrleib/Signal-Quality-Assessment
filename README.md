@@ -100,7 +100,7 @@ python main.py --input <path_to_file_or_folder> [OPTIONS]
    ```
 
 After completion, the script will generate:
-- **Plot of Average Spectrum with Uncertainty** in `res/spectrum_with_uncertainty.png`.
+- **Plot of Average Spectrum with Uncertainty** in `res/spectrum_with_uncertainty_data-sample_motor-operating-at-100%-load_20241227_101523.png`.
 - **Result metrics** in `.yml` files (e.g., `res/data-sample_motor-operating-at-100%-load_20241227_101523.yml`).
 
 ## Details
