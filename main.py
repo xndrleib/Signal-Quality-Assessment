@@ -2,29 +2,46 @@
 import argparse
 import logging
 import sys
-import os
 import time
 import yaml
 import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
 
-# Configure logger
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG) 
+# Suppress all logs at the root level
+logging.basicConfig(
+    level=logging.CRITICAL,  # Suppress all logs by default
+    format='[%(levelname)s] %(asctime)s - %(name)s - %(message)s'
+)
 
-# Console handler
-console_handler = logging.StreamHandler(sys.stdout)
-console_handler.setLevel(logging.INFO)
-formatter = logging.Formatter('[%(levelname)s] %(asctime)s - %(message)s')
-console_handler.setFormatter(formatter)
-logger.addHandler(console_handler)
-
-# File handler (optional)
+# Create a file handler
 file_handler = logging.FileHandler("signal_quality.log")
 file_handler.setLevel(logging.DEBUG)
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
+file_handler.setFormatter(logging.Formatter('[%(levelname)s] %(asctime)s - %(name)s - %(message)s'))
+
+# Create a stream handler
+stream_handler = logging.StreamHandler(sys.stdout)
+stream_handler.setLevel(logging.DEBUG)
+stream_handler.setFormatter(logging.Formatter('[%(levelname)s] %(asctime)s - %(name)s - %(message)s'))
+
+# Enable logging for 'main'
+main_logger = logging.getLogger("main")
+main_logger.setLevel(logging.DEBUG)  # Enable logging for 'main'
+main_logger.addHandler(file_handler)  # Attach handlers to 'main'
+main_logger.addHandler(stream_handler)
+
+# Enable logging for 'src'
+src_logger = logging.getLogger("src")
+src_logger.setLevel(logging.DEBUG)  # Enable logging for 'src'
+src_logger.addHandler(file_handler)  # Attach handlers to 'src'
+src_logger.addHandler(stream_handler)
+
+# Ensure 'main' and 'src' loggers do not propagate to the root logger
+main_logger.propagate = False
+src_logger.propagate = False
+
+# Use 'main' logger for this script
+logger = logging.getLogger("main")
 
 # Local imports
 from src.utils import read_data
@@ -165,9 +182,9 @@ def main():
     )
     parser.add_argument(
         "--db",
-        action="store_false",
+        type=bool,
         default=True,
-        help="Convert FFT values to dB scale if set. (default: True)"
+        help="Convert FFT values to dB scale. (default: True)"
     )
     parser.add_argument(
         "--cutoff_freq",
