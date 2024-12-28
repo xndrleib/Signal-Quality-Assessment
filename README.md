@@ -91,7 +91,7 @@ python main.py --input <path_to_file_or_folder> [OPTIONS]
        --window_length 10000 \
        --step 20 \
        --f_sampling 10000 \
-       --db \
+       --db True \
        --cutoff_freq 250
    ```
 
