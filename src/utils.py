@@ -1,10 +1,15 @@
 import logging
-import pandas as pd
 from typing import Optional
+
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-def read_data(file_path: str, output_path: Optional[str] = None) -> pd.DataFrame:
+
+def read_data(
+        file_path: str,
+        output_path: Optional[str] = None
+) -> pd.DataFrame:
     """
     Reads a text file with semicolon-separated time, data columns.
 

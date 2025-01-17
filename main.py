@@ -3,10 +3,16 @@ import argparse
 import logging
 import sys
 import time
-import yaml
-import numpy as np
 from pathlib import Path
+
 import matplotlib.pyplot as plt
+import numpy as np
+import yaml
+
+from src.data_preprocessing import fft_segment, segment_signal
+from src.quality_assessment import dominant_frequency_metric, spectral_entropy
+from src.utils import read_data
+from src.vis import plot_spectrum_with_uncertainty
 
 # Suppress all logs at the root level
 logging.basicConfig(
@@ -17,12 +23,14 @@ logging.basicConfig(
 # Create a file handler
 file_handler = logging.FileHandler("signal_quality.log")
 file_handler.setLevel(logging.DEBUG)
-file_handler.setFormatter(logging.Formatter('[%(levelname)s] %(asctime)s - %(name)s - %(message)s'))
+file_handler.setFormatter(logging.Formatter(
+    '[%(levelname)s] %(asctime)s - %(name)s - %(message)s'))
 
 # Create a stream handler
 stream_handler = logging.StreamHandler(sys.stdout)
 stream_handler.setLevel(logging.DEBUG)
-stream_handler.setFormatter(logging.Formatter('[%(levelname)s] %(asctime)s - %(name)s - %(message)s'))
+stream_handler.setFormatter(logging.Formatter(
+    '[%(levelname)s] %(asctime)s - %(name)s - %(message)s'))
 
 # Enable logging for 'main'
 main_logger = logging.getLogger("main")
@@ -44,10 +52,6 @@ src_logger.propagate = False
 logger = logging.getLogger("main")
 
 # Local imports
-from src.utils import read_data
-from src.data_preprocessing import segment_signal, fft_segment
-from src.vis import plot_spectrum_with_uncertainty
-from src.quality_assessment import spectral_entropy, dominant_frequency_metric
 
 
 def process_single_file(
@@ -57,7 +61,8 @@ def process_single_file(
     step: int = 20,
     f_sampling: float = 10000.0,
     db: bool = True,
-    cutoff_freq: float = 250.0
+    cutoff_freq: float = 250.0,
+    window_shape: str = 'rect'
 ) -> None:
     """
     Process a single signal file: segment it, transform to FFT, compute metrics,
@@ -70,6 +75,7 @@ def process_single_file(
     :param f_sampling: Sampling frequency of the data.
     :param db: Whether to convert FFT amplitude to dB scale.
     :param cutoff_freq: Frequency cutoff for filtering FFT results.
+    :param window_shape: Shape of window
     """
     logger.info(f"Processing file: {file_path}")
 
@@ -83,14 +89,27 @@ def process_single_file(
     logger.debug(f"Signal mean: {signal_mean:.3f} removed from signal.")
 
     # Segment the signal
-    segments = segment_signal(signal, segment_length=window_length, step=step)
+    segments = segment_signal(
+        signal, segment_length=window_length,
+        step=step,
+        window_shape=window_shape
+    )
     if segments.size == 0:
-        logger.warning(f"No valid segments produced from {file_path} with window_length={window_length}, step={step}")
+        logger.warning(
+            f"No valid segments produced from {file_path} with \
+                window_length={window_length}, step={step}")
         return
 
     # Perform FFT on each segment
-    fft_segments, freqs = fft_segment(segments, f_sampling=f_sampling, db=db, cutoff_freq=cutoff_freq)
-    logger.debug(f"fft_segments shape: {fft_segments.shape}, freqs length: {freqs.shape[0]}")
+    fft_segments, freqs = fft_segment(
+        segments,
+        f_sampling=f_sampling,
+        db=db,
+        cutoff_freq=cutoff_freq
+    )
+    logger.debug(
+        f"fft_segments shape: {fft_segments.shape}, \
+            freqs length: {freqs.shape[0]}")
 
     # Compute mean and standard deviation across segments
     spectrum_mean = np.mean(fft_segments, axis=0)
@@ -111,18 +130,19 @@ def process_single_file(
 
     # Plot and save
     fig, ax = plot_spectrum_with_uncertainty(
-        spectrum_mean=spectrum_mean, 
-        spectrum_std=spectrum_std, 
-        x_values=freqs, 
+        spectrum_mean=spectrum_mean,
+        spectrum_std=spectrum_std,
+        x_values=freqs,
         n_std=3,
         title=f"Spectrum with Uncertainty: {file_path.name}"
-        )
-    
+    )
+
     timestamp_str = time.strftime("%Y%m%d_%H%M%S")
     filename_without_ext = file_path.stem
 
     res_dir.mkdir(parents=True, exist_ok=True)
-    png_path = res_dir / f"spectrum_with_uncertainty_{filename_without_ext}_{timestamp_str}.png"
+    png_path = res_dir / \
+        f"spectrum_with_uncertainty_{filename_without_ext}_{timestamp_str}.png"
     fig.savefig(png_path, bbox_inches='tight')
     logger.info(f"Plot saved to {png_path}")
     plt.close(fig)
@@ -130,6 +150,12 @@ def process_single_file(
     # Prepare results dictionary
     results = {
         'Path': str(file_path),
+        'Window length': window_length,
+        'Step': step,
+        'F sampling': f_sampling,
+        'Db': db,
+        'Cutoff freq': cutoff_freq,
+        'Window shape': window_shape,
         'Average Standard Deviation': avg_std,
         'Spectral Entropy': spec_entropy,
         f'Dominant Freq Ratio ({target_freq} Hz)': dom_freq_ratio,
@@ -141,7 +167,8 @@ def process_single_file(
     yml_path = res_dir / yml_filename
 
     with open(yml_path, 'w', encoding='utf-8') as yaml_file:
-        yaml.dump(results, yaml_file, default_flow_style=False, allow_unicode=True)
+        yaml.dump(results, yaml_file,
+                  default_flow_style=False, allow_unicode=True)
 
     logger.info(f"Results saved to {yml_path}")
 
@@ -154,7 +181,8 @@ def main():
         "--input",
         type=str,
         required=True,
-        help="Path to a single data file or a folder containing multiple data files."
+        help="Path to a single data file or a folder containing \
+            multiple data files."
     )
     parser.add_argument(
         "--res_dir",
@@ -192,6 +220,12 @@ def main():
         default=250.0,
         help="Frequency cutoff for filtering FFT results (default: 250 Hz)."
     )
+    parser.add_argument(
+        "--window_shape",
+        type=str,
+        default='rect',
+        help="Shape of window (default: `rect`)."
+    )
 
     args = parser.parse_args()
     input_path = Path(args.input)
@@ -212,7 +246,8 @@ def main():
             step=args.step,
             f_sampling=args.f_sampling,
             db=args.db,
-            cutoff_freq=args.cutoff_freq
+            cutoff_freq=args.cutoff_freq,
+            window_shape=args.window_shape
         )
     elif input_path.is_dir():
         # Process multiple files in the folder
@@ -224,10 +259,12 @@ def main():
                 step=args.step,
                 f_sampling=args.f_sampling,
                 db=args.db,
-                cutoff_freq=args.cutoff_freq
+                cutoff_freq=args.cutoff_freq,
+                window_shape=args.window_shape
             )
     else:
         logger.error(f"Invalid input path: {input_path}")
+
 
 if __name__ == "__main__":
     main()

@@ -1,10 +1,12 @@
 import logging
-import numpy as np
+from typing import List, Optional, Tuple
+
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
-from typing import Optional, List, Tuple
 
 logger = logging.getLogger(__name__)
+
 
 def plot_random_segments(
     segments: np.ndarray,
@@ -20,18 +22,22 @@ def plot_random_segments(
     :param num_segments: How many random segments to plot.
     :param labels: Optional list of custom labels for segments.
     :param axis_labels: (x_label, y_label) for the axes.
-    :param x_values: x-values for the plot. If 2D, it matches each segment; if 1D, truncated to segment length.
+    :param x_values: x-values for the plot. If 2D, it matches each \
+        segment; if 1D, truncated to segment length.
     :return: (fig, ax)
     """
     if len(segments) < num_segments:
-        raise ValueError(f"Requested {num_segments} segments but only have {len(segments)}.")
+        raise ValueError(
+            f"Requested {num_segments} segments but only have {len(segments)}.")
 
-    random_indices = np.random.choice(len(segments), num_segments, replace=False)
+    random_indices = np.random.choice(
+        len(segments), num_segments, replace=False)
     selected_segments = segments[random_indices]
 
     if labels is not None:
         if len(labels) != len(segments):
-            raise ValueError("Length of labels must match the length of segments.")
+            raise ValueError(
+                "Length of labels must match the length of segments.")
         selected_labels = [labels[i] for i in random_indices]
     else:
         selected_labels = [f"Segment {i}" for i in random_indices]
@@ -80,7 +86,8 @@ def plot_spectrum(
     method: str = "interpolate"
 ) -> Tuple[plt.Figure, plt.Axes]:
     """
-    Plots the frequency spectrum with optional highlighted points using interpolation or closest point methods.
+    Plots the frequency spectrum with optional highlighted \
+        points using interpolation or closest point methods.
 
     :param df: DataFrame containing frequency and amplitude columns.
     :param freq_col: Name of the frequency column.
@@ -119,12 +126,14 @@ def plot_spectrum(
                     idx_closest = np.argmin(np.abs(freqs - hf))
                     hf_amp = amps[idx_closest]
                 else:
-                    raise ValueError("Invalid method. Use 'interpolate' or 'closest'.")
+                    raise ValueError(
+                        "Invalid method. Use 'interpolate' or 'closest'.")
 
             highlight_amps.append(hf_amp)
-        
+
         # Plot the highlight points
-        ax.scatter(highlight_freqs, highlight_amps, color='red', s=50, marker='o', label='Highlighted Points')
+        ax.scatter(highlight_freqs, highlight_amps, color='red',
+                   s=50, marker='o', label='Highlighted Points')
 
     # Set titles and labels
     ax.set_title(title)
@@ -161,10 +170,12 @@ def plot_spectrum_with_uncertainty(
     if x_values is None:
         x_values = np.arange(len(spectrum_mean))
 
-    x_label, y_label = axis_labels if axis_labels else ('Frequency (Hz)', 'Power (dB)')
+    x_label, y_label = axis_labels if axis_labels else (
+        'Frequency (Hz)', 'Power (dB)')
 
     fig, ax = plt.subplots(figsize=(10, 5))
-    ax.plot(x_values, spectrum_mean, linewidth=2.0, color='blue', label='Mean Spectrum')
+    ax.plot(x_values, spectrum_mean, linewidth=2.0,
+            color='blue', label='Mean Spectrum')
     ax.fill_between(
         x_values,
         spectrum_mean - spectrum_std * n_std,
@@ -174,13 +185,33 @@ def plot_spectrum_with_uncertainty(
         label=f'Uncertainty (±{n_std} SD)'
     )
     # Add thicker boundary lines for the shaded region
-    ax.plot(x_values, spectrum_mean - spectrum_std * n_std, linewidth=1.0, color='darkblue', linestyle='--')
-    ax.plot(x_values, spectrum_mean + spectrum_std * n_std, linewidth=1.0, color='darkblue', linestyle='--')
+    ax.plot(x_values, spectrum_mean - spectrum_std * n_std,
+            linewidth=1.0, color='darkblue', linestyle='--')
+    ax.plot(x_values, spectrum_mean + spectrum_std * n_std,
+            linewidth=1.0, color='darkblue', linestyle='--')
 
     ax.set_title(title, fontsize=10, fontweight='bold')
     ax.set_xlabel(x_label, fontsize=9)
     ax.set_ylabel(y_label, fontsize=9)
     ax.grid(True, linestyle='--', linewidth=0.5)
+    ax.legend(fontsize=9)
+
+    plt.tight_layout()
+    return fig, ax
+
+
+def plot_parameter_dependence(
+        param_name: str,
+        metric_name: str,
+        file_name: str,
+        param_metric: dict[int, float]
+):
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.plot(param_metric.keys(), param_metric.values(),
+            label=f'{param_name} dependence')
+    ax.set_title(f'{param_name} dependence for {file_name}')
+    ax.set_xlabel(param_name, fontsize=9)
+    ax.set_ylabel(metric_name, fontsize=9)
     ax.legend(fontsize=9)
 
     plt.tight_layout()

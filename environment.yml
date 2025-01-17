@@ -6,12 +6,15 @@ dependencies:
   - python=3.11
   - pip
   - tqdm
+  # Git
+  - pre-commit
   # Data Analysis
   - scipy
   - numpy
   - pandas
   - pyarrow
   - fastparquet
+  - optuna
   # Plotting
   - matplotlib
   - seaborn

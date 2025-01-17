@@ -62,6 +62,7 @@ conda activate py311_sqa
 Install the package using the pyproject.toml setup:
 ```bash
 pip install -e .
+pre-commit install
 ```
 
 ## Usage
