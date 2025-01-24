@@ -15,9 +15,11 @@ dependencies:
   - pyarrow
   - fastparquet
   - optuna
+  - librosa
   # Plotting
   - matplotlib
   - seaborn
+  - plotly
   # Machine learning
   - scikit-learn
   # Jupyter Environment

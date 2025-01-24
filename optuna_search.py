@@ -7,6 +7,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import optuna
+import plotly
 import yaml
 
 # Local imports
@@ -18,20 +19,22 @@ from src.vis import plot_spectrum_with_uncertainty
 # Suppress all logs at the root level
 logging.basicConfig(
     level=logging.CRITICAL,  # Suppress all logs by default
-    format='[%(levelname)s] %(asctime)s - %(name)s - %(message)s'
+    format="[%(levelname)s] %(asctime)s - %(name)s - %(message)s",
 )
 
 # Create a file handler
 file_handler = logging.FileHandler("signal_quality.log")
 file_handler.setLevel(logging.DEBUG)
-file_handler.setFormatter(logging.Formatter(
-    '[%(levelname)s] %(asctime)s - %(name)s - %(message)s'))
+file_handler.setFormatter(
+    logging.Formatter("[%(levelname)s] %(asctime)s - %(name)s - %(message)s")
+)
 
 # Create a stream handler
 stream_handler = logging.StreamHandler(sys.stdout)
 stream_handler.setLevel(logging.DEBUG)
-stream_handler.setFormatter(logging.Formatter(
-    '[%(levelname)s] %(asctime)s - %(name)s - %(message)s'))
+stream_handler.setFormatter(
+    logging.Formatter("[%(levelname)s] %(asctime)s - %(name)s - %(message)s")
+)
 
 # Enable logging for 'main'
 main_logger = logging.getLogger("main")
@@ -61,7 +64,7 @@ def process_single_file(
     f_sampling: float = 10000.0,
     db: bool = True,
     cutoff_freq: float = 250.0,
-    window_shape: str = 'rect'
+    window_shape: str = "rect",
 ) -> None:
     """
     Process a single signal file: segment it, transform to FFT, compute metrics,
@@ -80,7 +83,7 @@ def process_single_file(
 
     # Read the data
     df = read_data(file_path)
-    signal = df['Data'].to_numpy()
+    signal = df["Data"].to_numpy()
 
     # Optional removal of DC offset
     signal_mean = np.mean(signal)
@@ -89,26 +92,26 @@ def process_single_file(
 
     # Segment the signal
     segments = segment_signal(
-        signal, segment_length=window_length,
+        signal,
+        segment_length=window_length,
         step=step,
-        window_shape=window_shape
+        window_shape=window_shape,
     )
     if segments.size == 0:
         logger.warning(
             f"No valid segments produced from {file_path} with \
-                window_length={window_length}, step={step}")
+                window_length={window_length}, step={step}"
+        )
         return
 
     # Perform FFT on each segment
     fft_segments, freqs = fft_segment(
-        segments,
-        f_sampling=f_sampling,
-        db=db,
-        cutoff_freq=cutoff_freq
+        segments, f_sampling=f_sampling, db=db, cutoff_freq=cutoff_freq
     )
     logger.debug(
         f"fft_segments shape: {fft_segments.shape}, \
-            freqs length: {freqs.shape[0]}")
+            freqs length: {freqs.shape[0]}"
+    )
 
     # Compute mean and standard deviation across segments
     spectrum_mean = np.mean(fft_segments, axis=0)
@@ -120,12 +123,14 @@ def process_single_file(
 
     target_freq = 50.0
     freq_tolerance = 1.0
-    dom_freq_ratio: float = float(dominant_frequency_metric(
-        fft_magnitude=spectrum_mean,
-        freqs=freqs,
-        target_freq=target_freq,
-        freq_tolerance=freq_tolerance
-    ))
+    dom_freq_ratio: float = float(
+        dominant_frequency_metric(
+            fft_magnitude=spectrum_mean,
+            freqs=freqs,
+            target_freq=target_freq,
+            freq_tolerance=freq_tolerance,
+        )
+    )
 
     # Plot and save
     fig, ax = plot_spectrum_with_uncertainty(
@@ -133,41 +138,44 @@ def process_single_file(
         spectrum_std=spectrum_std,
         x_values=freqs,
         n_std=3,
-        title=f"Spectrum with Uncertainty: {file_path.name}"
+        title=f"Spectrum with Uncertainty: {file_path.name}",
     )
 
     timestamp_str = time.strftime("%Y%m%d_%H%M%S")
     filename_without_ext = file_path.stem
 
     res_dir.mkdir(parents=True, exist_ok=True)
-    png_path = res_dir / \
-        f"spectrum_with_uncertainty_{filename_without_ext}_{timestamp_str}.png"
-    fig.savefig(png_path, bbox_inches='tight')
+    png_path = (
+        res_dir
+        / f"spectrum_with_uncertainty_{filename_without_ext}_{timestamp_str}.png"
+    )
+    fig.savefig(png_path, bbox_inches="tight")
     logger.info(f"Plot saved to {png_path}")
     plt.close(fig)
 
     # Prepare results dictionary
     results = {
-        'Path': str(file_path),
-        'Window length': window_length,
-        'Step': step,
-        'F sampling': f_sampling,
-        'Db': db,
-        'Cutoff freq': cutoff_freq,
-        'Window shape': window_shape,
-        'Average Standard Deviation': avg_std,
-        'Spectral Entropy': spec_entropy,
-        f'Dominant Freq Ratio ({target_freq} Hz)': dom_freq_ratio,
-        'Timestamp': timestamp_str
+        "Path": str(file_path),
+        "Window length": window_length,
+        "Step": step,
+        "F sampling": f_sampling,
+        "Db": db,
+        "Cutoff freq": cutoff_freq,
+        "Window shape": window_shape,
+        "Average Standard Deviation": avg_std,
+        "Spectral Entropy": spec_entropy,
+        f"Dominant Freq Ratio ({target_freq} Hz)": dom_freq_ratio,
+        "Timestamp": timestamp_str,
     }
 
     # Save results to a YAML file with timestamp
     yml_filename = f"metrics_{filename_without_ext}_{timestamp_str}.yml"
     yml_path = res_dir / yml_filename
 
-    with open(yml_path, 'w', encoding='utf-8') as yaml_file:
-        yaml.dump(results, yaml_file,
-                  default_flow_style=False, allow_unicode=True)
+    with open(yml_path, "w", encoding="utf-8") as yaml_file:
+        yaml.dump(
+            results, yaml_file, default_flow_style=False, allow_unicode=True
+        )
 
     logger.info(f"Results saved to {yml_path}")
     return yml_path
@@ -175,11 +183,11 @@ def process_single_file(
 
 class Objective:
     def __init__(
-            self,
-            input_file,
-            res_dir,
-            window_length_range,
-            step_range,
+        self,
+        input_file,
+        res_dir,
+        window_length_range,
+        step_range,
     ):
         self.input_file = input_file
         self.res_dir = res_dir
@@ -187,23 +195,18 @@ class Objective:
         self.step_range = step_range
 
     def __call__(self, trial):
-        window_length = trial.suggest_int('window_length',
-                                          self.window_length_range[0],
-                                          self.window_length_range[1]
-                                          )
-        step = trial.suggest_int('step',
-                                 self.step_range[0],
-                                 self.step_range[1]
-                                 )
-        f_sampling = 10000
+        window_length = trial.suggest_int(
+            "window_length",
+            self.window_length_range[0],
+            self.window_length_range[1],
+        )
+        step = trial.suggest_int("step", self.step_range[0], self.step_range[1])
         cutoff_freq = 250.0
         db = True
-        window_shape = trial.suggest_categorical('window_shape', ['rect',
-                                                                  'bartlett',
-                                                                  'blackman',
-                                                                  'hanning',
-                                                                  'hamming',
-                                                                  'kaiser'])
+        window_shape = trial.suggest_categorical(
+            "window_shape",
+            ["rect", "bartlett", "blackman", "hanning", "hamming", "kaiser"],
+        )
 
         # Check if input is a file or a directory
         if self.input_file.is_file():
@@ -213,14 +216,14 @@ class Objective:
                 res_dir=self.res_dir,
                 window_length=window_length,
                 step=step,
-                f_sampling=f_sampling,
+                f_sampling=window_length,
                 db=db,
                 cutoff_freq=cutoff_freq,
-                window_shape=window_shape
+                window_shape=window_shape,
             )
             with open(yml_path) as stream:
                 results = yaml.safe_load(stream)
-                return results['Dominant Freq Ratio (50.0 Hz)']
+                return results["Dominant Freq Ratio (50.0 Hz)"]
         else:
             logger.error(f"Invalid input path: {self.input_file}")
             return
@@ -235,64 +238,104 @@ def main():
         type=str,
         required=True,
         help="Path to a single data file or a folder containing \
-            multiple data files."
+            multiple data files.",
     )
     parser.add_argument(
         "--res_dir",
         type=str,
         default="res",
-        help="Path to results folder (default: 'res')."
+        help="Path to results folder (default: 'res').",
     )
     parser.add_argument(
         "--window_length_range",
         type=str,
-        default='5000,50000',
-        help="Number of samples in each segment window (default: 10000)."
+        default="5000,20000",
+        help="Number of samples in each segment window (default: '5000,20000').",
     )
     parser.add_argument(
         "--step_range",
         type=str,
-        default='10,100',
-        help="Step size for sliding windows (default: 20)."
+        default="10,100",
+        help="Step size for sliding windows (default: '10,100').",
     )
     parser.add_argument(
         "--n_trials",
         type=int,
-        default='100',
-        help="Number of optuna trials (default: 100)."
+        default="100",
+        help="Number of optuna trials (default: 100).",
     )
 
     args = parser.parse_args()
     input_path = Path(args.input)
     res_dir = Path(args.res_dir)
-    window_length_range = [int(arg)
-                           for arg in args.window_length_range.split(',')]
-    step_range = [int(arg) for arg in args.step_range.split(',')]
+    window_length_range = [
+        int(arg) for arg in args.window_length_range.split(",")
+    ]
+    step_range = [int(arg) for arg in args.step_range.split(",")]
 
     # Log input parameters
     logger.info("CLI Input Parameters:")
     for arg, value in vars(args).items():
         logger.info(f"  {arg}: {value}")
 
-    for input_file in input_path.glob('*.txt'):
+    for input_file in input_path.glob("*.txt"):
         study = optuna.create_study(
-            direction='maximize',
+            direction="maximize",
             sampler=optuna.samplers.TPESampler(),
-            pruner=optuna.pruners.MedianPruner()
+            pruner=optuna.pruners.MedianPruner(),
         )
-        study.optimize(Objective(input_file,
-                                 res_dir,
-                                 window_length_range,
-                                 step_range),
-                       n_trials=args.n_trials)
+        study.optimize(
+            Objective(input_file, res_dir, window_length_range, step_range),
+            n_trials=args.n_trials,
+        )
         timestamp_str = time.strftime("%Y%m%d_%H%M%S")
-        with open(f'{res_dir}/optuna_{input_file.stem}_{timestamp_str}.yml',
-                  'w',
-                  encoding='utf-8') as inf:
+        with open(
+            f"{res_dir}/optuna_{input_file.stem}_{timestamp_str}.yml",
+            "w",
+            encoding="utf-8",
+        ) as inf:
             best_signal = study.best_params.copy()
-            best_signal['metric'] = study.best_value
-            yaml.dump(best_signal, inf,
-                      default_flow_style=False, allow_unicode=True)
+            best_signal["metric"] = study.best_value
+            yaml.dump(
+                best_signal, inf, default_flow_style=False, allow_unicode=True
+            )
+        target_name = "metric"
+        fig = optuna.visualization.plot_optimization_history(
+            study=study, target_name=target_name
+        )
+        plotly.offline.plot(
+            fig,
+            filename=f"{res_dir}/optuna_history_{input_file.stem}_{timestamp_str}.html",
+            auto_open=False,
+        )
+        fig = optuna.visualization.plot_contour(
+            study=study,
+            params=["window_length", "step"],
+            target_name=target_name,
+        )
+        plotly.offline.plot(
+            fig,
+            filename=f"{res_dir}/optuna_contour_{input_file.stem}_{timestamp_str}.html",
+            auto_open=False,
+        )
+        fig = optuna.visualization.plot_param_importances(
+            study=study,
+            params=["window_length", "step"],
+            target_name=target_name,
+        )
+        plotly.offline.plot(
+            fig,
+            filename=f"{res_dir}/optuna_import_{input_file.stem}_{timestamp_str}.html",
+            auto_open=False,
+        )
+        fig = optuna.visualization.plot_edf(
+            study=study, target_name=target_name
+        )
+        plotly.offline.plot(
+            fig,
+            filename=f"{res_dir}/optuna_edf_{input_file.stem}_{timestamp_str}.html",
+            auto_open=False,
+        )
 
 
 if __name__ == "__main__":
