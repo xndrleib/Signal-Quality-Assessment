@@ -1,21 +1,47 @@
 import logging
 import pandas as pd
-from typing import Optional
 from pathlib import Path
+from collections import defaultdict
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
-def load_preprocessed_data(file_path: str) -> pd.DataFrame:
+
+def read_data(file_path: str, output_dir: str = "data/processed") -> pd.DataFrame:
     """
-    Reads a preprocessed file.
+    Reads and preprocesses a file based on its extension (TXT or CSV).
+    - If TXT, preprocesses using `preprocess_txt_file()`.
+    - If CSV, preprocesses using `preprocess_csv_file()`.
 
     :param file_path: Path to the original input file.
+    :param output_dir: Directory where preprocessed files will be stored.
     :return: DataFrame with Time as index and sensor channels as columns.
     """
     file_path = Path(file_path)
+    output_dir = Path(output_dir)
+    processed_csv_path = output_dir / f"{file_path.stem}.csv"
+
+    # Check if preprocessed file exists
+    if not processed_csv_path.exists():
+        logger.info(f"Preprocessing required for {file_path}")
+
+        # Detect file extension and apply preprocessing
+        if file_path.suffix.lower() == ".txt":
+            preprocess_txt_file(file_path, output_dir)  # Preprocess TXT
+        elif file_path.suffix.lower() == ".csv":
+            preprocess_csv_file(file_path, output_dir)  # Preprocess CSV
+        else:
+            logger.error(f"Unsupported file format: {file_path.suffix}")
+            return pd.DataFrame()
 
     # Load preprocessed data
-    df = pd.read_csv(file_path, index_col=0)
+    df = pd.read_csv(processed_csv_path, index_col=0, dtype=defaultdict(np.float64))
+
+
+    # Detect number of channels
+    n_channels = df.shape[1]  # Number of sensor channels
+    logger.info(f"Loaded preprocessed data with {n_channels} channels from {processed_csv_path}")
+
     return df
 
 

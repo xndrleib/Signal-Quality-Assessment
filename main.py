@@ -75,75 +75,102 @@ def process_single_file(
 
     # Read the data
     df = read_data(file_path)
-    signal = df['Data'].to_numpy()
 
-    # Optional removal of DC offset
-    signal_mean = np.mean(signal)
-    signal -= signal_mean
-    logger.debug(f"Signal mean: {signal_mean:.3f} removed from signal.")
+    # If there's a "Time" column, we'll ignore it when processing channels
+    if "Time" in df.columns:
+        data_columns = [col for col in df.columns if col.lower() != "time"]
+    else:
+        data_columns = df.columns.tolist()
 
-    # Segment the signal
-    segments = segment_signal(signal, segment_length=window_length, step=step)
-    if segments.size == 0:
-        logger.warning(f"No valid segments produced from {file_path} with window_length={window_length}, step={step}")
+    # If no data columns found, log a warning and return
+    if not data_columns:
+        logger.warning(f"No numeric data columns found in file {file_path.name}. Skipping...")
         return
 
-    # Perform FFT on each segment
-    fft_segments, freqs = fft_segment(segments, f_sampling=f_sampling, db=db, cutoff_freq=cutoff_freq)
-    logger.debug(f"fft_segments shape: {fft_segments.shape}, freqs length: {freqs.shape[0]}")
+    # For each channel in the file, run the pipeline
+    for channel_name in data_columns:
+        logger.info(f"Processing channel: {channel_name}")
+        signal = df[channel_name].to_numpy()
 
-    # Compute mean and standard deviation across segments
-    spectrum_mean = np.mean(fft_segments, axis=0)
-    spectrum_std = np.std(fft_segments, axis=0)
+        # Optional removal of DC offset (channel-wise)
+        signal_mean = np.mean(signal)
+        signal -= signal_mean
+        logger.debug(f"Signal mean for {channel_name}: {signal_mean:.3f} removed.")
 
-    # Compute metrics
-    avg_std: float = float(np.mean(spectrum_std))
-    spec_entropy: float = float(spectral_entropy(spectrum_mean, eps=1e-12))
+        # Segment the signal
+        segments = segment_signal(signal, segment_length=window_length, step=step)
+        if segments.size == 0:
+            logger.warning(
+                f"No valid segments produced from {file_path} channel {channel_name} "
+                f"with window_length={window_length}, step={step}"
+            )
+            continue
 
-    target_freq = 50.0
-    freq_tolerance = 1.0
-    dom_freq_ratio: float = float(dominant_frequency_metric(
-        fft_magnitude=spectrum_mean,
-        freqs=freqs,
-        target_freq=target_freq,
-        freq_tolerance=freq_tolerance
-    ))
-
-    # Plot and save
-    fig, ax = plot_spectrum_with_uncertainty(
-        spectrum_mean=spectrum_mean, 
-        spectrum_std=spectrum_std, 
-        x_values=freqs, 
-        n_std=3,
-        title=f"Spectrum with Uncertainty: {file_path.name}"
+        # Perform FFT on each segment
+        fft_segments, freqs = fft_segment(
+            segments, 
+            f_sampling=f_sampling, 
+            db=db, 
+            cutoff_freq=cutoff_freq
         )
-    
-    timestamp_str = time.strftime("%Y%m%d_%H%M%S")
-    filename_without_ext = file_path.stem
+        logger.debug(
+            f"fft_segments shape (channel={channel_name}): {fft_segments.shape}, "
+            f"freqs length: {freqs.shape[0]}"
+        )
 
-    res_dir.mkdir(parents=True, exist_ok=True)
-    png_path = res_dir / f"spectrum_with_uncertainty_{filename_without_ext}_{timestamp_str}.png"
-    fig.savefig(png_path, bbox_inches='tight')
-    logger.info(f"Plot saved to {png_path}")
-    plt.close(fig)
+        # Compute mean and standard deviation across segments
+        spectrum_mean = np.mean(fft_segments, axis=0)
+        spectrum_std = np.std(fft_segments, axis=0)
 
-    # Prepare results dictionary
-    results = {
-        'Path': str(file_path),
-        'Average Standard Deviation': avg_std,
-        'Spectral Entropy': spec_entropy,
-        f'Dominant Freq Ratio ({target_freq} Hz)': dom_freq_ratio,
-        'Timestamp': timestamp_str
-    }
+        # Compute metrics
+        avg_std: float = float(np.mean(spectrum_std))
+        spec_entropy: float = float(spectral_entropy(spectrum_mean, eps=1e-12))
 
-    # Save results to a YAML file with timestamp
-    yml_filename = f"metrics_{filename_without_ext}_{timestamp_str}.yml"
-    yml_path = res_dir / yml_filename
+        target_freq = 50.0
+        freq_tolerance = 1.0
+        dom_freq_ratio: float = float(dominant_frequency_metric(
+            fft_magnitude=spectrum_mean,
+            freqs=freqs,
+            target_freq=target_freq,
+            freq_tolerance=freq_tolerance
+        ))
 
-    with open(yml_path, 'w', encoding='utf-8') as yaml_file:
-        yaml.dump(results, yaml_file, default_flow_style=False, allow_unicode=True)
+        # Plot and save (include channel_name in the plot filename)
+        fig, ax = plot_spectrum_with_uncertainty(
+            spectrum_mean=spectrum_mean, 
+            spectrum_std=spectrum_std, 
+            x_values=freqs, 
+            n_std=3,
+            title=f"Spectrum with Uncertainty: {file_path.name} - {channel_name}"
+        )
 
-    logger.info(f"Results saved to {yml_path}")
+        timestamp_str = time.strftime("%Y%m%d_%H%M%S")
+        filename_without_ext = file_path.stem
+
+        res_dir.mkdir(parents=True, exist_ok=True)
+        png_path = res_dir / f"spectrum_with_uncertainty_{filename_without_ext}_{channel_name}_{timestamp_str}.png"
+        fig.savefig(png_path, bbox_inches='tight')
+        logger.info(f"Plot saved to {png_path}")
+        plt.close(fig)
+
+        # Prepare results dictionary
+        results = {
+            'Path': str(file_path),
+            'Channel': channel_name,
+            'Average Standard Deviation': avg_std,
+            'Spectral Entropy': spec_entropy,
+            f'Dominant Freq Ratio ({target_freq} Hz)': dom_freq_ratio,
+            'Timestamp': timestamp_str
+        }
+
+        # Save results to a YAML file (include channel name in the file)
+        yml_filename = f"metrics_{filename_without_ext}_{channel_name}_{timestamp_str}.yml"
+        yml_path = res_dir / yml_filename
+
+        with open(yml_path, 'w', encoding='utf-8') as yaml_file:
+            yaml.dump(results, yaml_file, default_flow_style=False, allow_unicode=True)
+
+        logger.info(f"Results saved to {yml_path}")
 
 
 def main():
@@ -228,6 +255,7 @@ def main():
             )
     else:
         logger.error(f"Invalid input path: {input_path}")
+
 
 if __name__ == "__main__":
     main()
