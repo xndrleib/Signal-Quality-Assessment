@@ -242,17 +242,18 @@ def main():
             cutoff_freq=args.cutoff_freq
         )
     elif input_path.is_dir():
-        # Process multiple files in the folder
-        for file in input_path.glob("*.txt"):
-            process_single_file(
-                file_path=file,
-                res_dir=res_dir,
-                window_length=args.window_length,
-                step=args.step,
-                f_sampling=args.f_sampling,
-                db=args.db,
-                cutoff_freq=args.cutoff_freq
-            )
+        # Process every file in the folder
+        for file in input_path.glob("*"):
+            if file.is_file():
+                process_single_file(
+                    file_path=file,
+                    res_dir=res_dir,
+                    window_length=args.window_length,
+                    step=args.step,
+                    f_sampling=args.f_sampling,
+                    db=args.db,
+                    cutoff_freq=args.cutoff_freq
+                )
     else:
         logger.error(f"Invalid input path: {input_path}")
 
