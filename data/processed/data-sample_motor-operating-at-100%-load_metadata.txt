@@ -1,0 +1,17 @@
+Oscilloscope Data File
+Experiment Time :   11-01-2023 12:02:45
+Number of frames: 600000
+
+Module: E-2010B (8T773102)
+
+Number Of Channels : 1
+Input Rate In kHz: 10.000000
+Input Time In Sec: 60.000000
+Decimation: 1
+Data Format: Calibr
+Time markers scale: seconds
+Segments: 1
+Data as Time Sequence:
+                    Ch  2  
+
+
