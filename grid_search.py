@@ -67,29 +67,46 @@ def main():
     args = parser.parse_args()
     input_path = Path(args.input)
     res_dir = Path(args.res_dir)
-    window_lengths = args.window_lengths.strip().replace(' ', '').split(',')
-    steps = args.steps.strip().replace(' ', '').split(',')
-    f_samplings = args.f_samplings.strip().replace(' ', '').split(',')
-    dbs = args.dbs.strip().replace(' ', '').split(',')
-    cutoff_freqs = args.cutoff_freqs.strip().replace(' ', '').split(',')
-    window_shapes = args.window_shapes.strip().replace(' ', '').split(',')
+    window_lengths = [win_len.strip() for win_len in args.window_lengths.split(',')]
+    steps = [step.strip() for step in args.steps.split(',')]
+    f_samplings = [f_samp.strip() for f_samp in args.f_samplings.split(',')]
+    dbs = [db.strip() for db in args.dbs.split(',')]
+    cutoff_freqs = [cutoff_freq.strip() for cutoff_freq in args.cutoff_freqs.split(',')]
+    window_shapes = [win_shape.strip() for win_shape in args.window_shapes.split(',')]
 
-    for params in product(window_lengths,
-                          steps,
-                          f_samplings,
-                          dbs,
-                          cutoff_freqs,
-                          window_shapes):
-        subprocess.run(['python',
-                        'main.py',
-                        '--input', input_path,
-                        '--res_dir', res_dir,
-                        '--window_length', params[0],
-                        '--step', params[1],
-                        '--f_sampling', params[2],
-                        '--db', params[3],
-                        '--cutoff_freq', params[4],
-                        '--window_shape', params[5]])
+    if 'as_window_length' in f_samplings:
+        for params in product(window_lengths,
+                              steps,
+                              dbs,
+                              cutoff_freqs,
+                              window_shapes):
+            subprocess.run(['python',
+                            'main.py',
+                            '--input', input_path,
+                            '--res_dir', res_dir,
+                            '--window_length', params[0],
+                            '--step', params[1],
+                            '--f_sampling', f'{params[0]}.0',
+                            '--db', params[2],
+                            '--cutoff_freq', params[3],
+                            '--window_shape', params[4]])
+    else:
+        for params in product(window_lengths,
+                              steps,
+                              f_samplings,
+                              dbs,
+                              cutoff_freqs,
+                              window_shapes):
+            subprocess.run(['python',
+                            'main.py',
+                            '--input', input_path,
+                            '--res_dir', res_dir,
+                            '--window_length', params[0],
+                            '--step', params[1],
+                            '--f_sampling', params[2],
+                            '--db', params[3],
+                            '--cutoff_freq', params[4],
+                            '--window_shape', params[5]])
 
     input_files = list(Path(input_path).glob('*.txt'))
     res_files = list(Path(res_dir).glob('*.yml'))
